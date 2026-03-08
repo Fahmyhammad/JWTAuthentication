@@ -17,11 +17,22 @@ namespace WebAPI.Infrastructure
 
         public Token GenerateToken(UserAccount userAccount)
         {
-           var accrssToken = GenerateAccessToken(userAccount);
-            return new Token { AccessToken = accrssToken };
-            
+            var accrssToken = GenerateAccessToken(userAccount);
+            var refreshToken = GenerateRefreshToken();
+            return new Token { AccessToken = accrssToken , RefreshToken = refreshToken };
+
         }
 
+        private RefreshToken? GenerateRefreshToken()
+        {
+            var refreshToken = new RefreshToken
+            {
+                Token = Guid.NewGuid().ToString(),
+                Expires = DateTime.UtcNow.AddDays(7),
+                Enabled = true
+            };
+            return refreshToken;
+        }
         private string GenerateAccessToken(UserAccount userAccount)
         {
             string secretKey = configuration["JWT:Key"];
@@ -46,7 +57,7 @@ namespace WebAPI.Infrastructure
         public class Token
         {
             public string AccessToken { get; set; }
-           // public string RefreshToken { get; set; }
+             public RefreshToken RefreshToken { get; set; }
         }
     }
 }

@@ -48,8 +48,60 @@ namespace WebAPI.Controllers
             // Here you would typically generate a JWT token and return it to the client
             var token = tokenProvider.GenerateToken(user);
             response.AccessToken = token.AccessToken;
+
+            response.RefreshToken = token.RefreshToken.Token;
+
+            dataAccess.InsertRefreshToken(token.RefreshToken, user.Email);
+            dataAccess.DisableUserTokenByEmail(user.Email);
+
+
             return response;
 
+        }
+        [HttpPost("refresh")]
+        public ActionResult<AuthResponse> Refresh()
+        {
+            AuthResponse response = new AuthResponse();
+            var refreshToken = Request.Cookies["refreshtoken"];
+            if (refreshToken == null)
+            {
+                return Unauthorized("Invalid or expired refresh token.");
+            }
+            var user = dataAccess.FindUserByEmail(refreshToken);
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+            var currentUser = dataAccess.FindUserByToken(refreshToken);
+            if (currentUser == null)
+            {
+                return Unauthorized("Invalid or expired refresh token.");
+            }
+            var token = tokenProvider.GenerateToken(currentUser);
+            response.AccessToken = token.AccessToken;
+            response.RefreshToken = token.RefreshToken.Token;
+
+            dataAccess.InsertRefreshToken(token.RefreshToken, currentUser.Email);
+            dataAccess.DisableUserTokenByEmail(currentUser.Email);
+
+            return response;
+
+        }
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            var refreshToken = Request.Cookies["refreshtoken"];
+            if (refreshToken == null)
+            {
+                return BadRequest("Refresh token is required.");
+            }
+            var user = dataAccess.FindUserByEmail(refreshToken);
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+            dataAccess.DisableUserTokenByEmail(user.Email);
+            return Ok("Logged out successfully.");
         }
     }
 }
